@@ -8,7 +8,7 @@ To run this productivity tracker, you'll need Python and a few Python libraries.
 ```bash
 $ sudo apt-get update
 $ sudo apt-get install python3.8
-$ pip install playsound
+$ pip install pygame
 ```
 For Windows systems, you can download Python from [the official website](https://www.python.org/downloads/) and use pip in a similar manner to install the necessary libraries.
 Also, make sure you have a BellSound.mp3 file in the same directory as the script for the reminder sound. Alternatively replace the mp3 with another. Make sure the audio is longer than the wait between breaks
