@@ -10,8 +10,10 @@ from functools import lru_cache
 from threading import Thread
 # https://stackoverflow.com/questions/51464455/how-to-disable-welcome-message-when-importing-pygame
 import os
+
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
+
 
 def setupThreads():
     global main_thread, reminder_thread
@@ -41,7 +43,7 @@ def setupSQL():
     )
     """)
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS Time_Spent (
+    CREATE TABLE IF NOT EXISTS Time_Calender (
         chronology_id INTEGER PRIMARY KEY,
         session_id INTEGER,
         activity_type TEXT,
@@ -53,8 +55,10 @@ def setupSQL():
     connection.commit()
     connection.close()
 
+
 def setupPyGameSound():
     pygame.mixer.init()
+
 
 def setupGlobalVars():
     global session_times, command_list
@@ -69,38 +73,45 @@ def main():
         command = input("Listening for commands: ")
         if command.lower() == "help":
             print(f"Commands are: {' '.join(command_list)}")
-        if command.lower() == "apd":
+        elif command.lower() == "apd":
             print("average per day is:", averagePerDay())
-        if command.lower() == "apw":
+        elif command.lower() == "apw":
             print("average per week is:", averagePerWeek())
-        if command.lower() == "apm":
+        elif command.lower() == "apm":
             print("average per month is:", averagePerMonth())
-        if command.lower() == "total":
+        elif command.lower() == "total":
             print(f"total duration: {total()} hours")
-        if command.lower() == "cs":
+        elif command.lower() == "cs":
             print("current session length:", datetime.datetime.now() - startTime)
-        if command.lower() == "cad":
-            print("current activity length:", datetime.datetime.now() - startTimeMode)
-        if command.lower() == "ca":
+        elif command.lower() == "cad":
+            print("current activity length:", datetime.datetime.now() - startTimeActivity)
+        elif command.lower() == "ca":
             print("current activity is:", activity)
-        if command.lower() == "change":
+        elif command.lower() == "change":
             # out of function so sound can auto change it
-            newActivity = input("Change: What are you doing? research/coding: ")
-            changeMode(newActivity)
-        if command.lower() == "stop":
+            newActivity = input("Change: What are you doing? research/coding: ").lower()
+            while newActivity not in session_times.keys():
+                newActivity = input("Change: What are you doing? research/coding: ").lower()
+            changeActivity(newActivity)
+        elif command.lower() == "stop":
             print("stopping:")
             endTimer()
-        if command.lower() == "exit":
-            raise SystemExit
-
-
+        elif command.lower() == "exit":
+            check = input("This will exit without saving\nAre you sure you wish to proceed? ")
+            if check.lower() == "yes":
+                print("Exiting without saving")
+                raise SystemExit
+            print("Continuing")
 def startTimer():
     print("Starting Timer...")
-    global startTime, activity, startTimeMode
-    activity = input("Setup: What are you doing? research/coding: ")
+    global startTime, activity, startTimeActivity
+    activity = input("Setup: What are you doing? research/coding: ").lower()
+    while activity not in session_times.keys():
+        activity = input("Setup: What are you doing? research/coding: ").lower()
     startTime = datetime.datetime.now()
-    startTimeMode = datetime.datetime.now()
-    session_times[activity]["started"].append(startTimeMode)
+    startTimeActivity = datetime.datetime.now()
+    session_times[activity]["started"].append(startTimeActivity)
+    print(f"Started timer on {activity}")
 
 
 def exit_handler():
@@ -110,7 +121,7 @@ def exit_handler():
 def endTimer():
     currentTime = datetime.datetime.now()
     session_times[activity]["ended"].append(currentTime)
-    session_times[activity]["total"] += (currentTime.timestamp() - startTimeMode.timestamp())
+    session_times[activity]["total"] += (currentTime.timestamp() - startTimeActivity.timestamp())
     print("\nconnecting to db")
     # connect to the SQLite database
     connection = sqlite3.connect('productivity.db')
@@ -135,13 +146,14 @@ def endTimer():
         # insert into Time_Spent table
         for start_time, end_time in zip(activity_times['started'], activity_times['ended']):
             cursor.execute("""
-                INSERT INTO Time_Spent (session_id, activity_type, start_time, end_time)
+                INSERT INTO Time_Calender (session_id, activity_type, start_time, end_time)
                 VALUES (?, ?, ?, ?)
                 """, (session_id, activity_type, str(start_time), str(end_time)))
-    print("commiting and closing")
+    print("committing and closing")
     connection.commit()
     connection.close()
     print("done...\n")
+    raise SystemExit
 
 
 # to help make the db i wrote it down like this, ignore this if u want.
@@ -178,8 +190,7 @@ def averagePerMonth():
 def total():
     connection = sqlite3.connect('productivity.db')
     cursor = connection.cursor()
-    total = cursor.execute("SELECT SUM(duration_hours) FROM Sessions")
-    total = total.fetchone()[0]
+    total = cursor.execute("SELECT SUM(duration_hours) FROM Sessions").fetchone()[0]
     connection.close()
     return total
 
@@ -187,9 +198,10 @@ def total():
 def play_reminder():
     global activity
     # for future version when it has sound to tell to get back to work
-    #activity = changeMode("break") if activity != "break" else activity
-    #print("\nChanged activity to 'break'\nRemember to switch it back (change)\nStill listening...")
-    pygame.mixer.music.load("BellSound.mp3") # copyright free https://www.youtube.com/watch?v=YEf7_fPMbr4&pp=ygUZYmVsbCBzb3VuZCBjb3B5cmlnaHQgZnJlZQ%3D%3D
+    # activity = changeMode("break") if activity != "break" else activity
+    # print("\nChanged activity to 'break'\nRemember to switch it back (change)\nStill listening...")
+    pygame.mixer.music.load(
+        "BellSound.mp3")  # copyright free https://www.youtube.com/watch?v=YEf7_fPMbr4&pp=ygUZYmVsbCBzb3VuZCBjb3B5cmlnaHQgZnJlZQ%3D%3D
     pygame.mixer.music.play()
     while pygame.mixer.music.get_busy() == True:
         continue
@@ -201,13 +213,14 @@ def reminder():
         play_reminder()
 
 
-def changeMode(newActivity):
-    global startTimeMode, activity
+def changeActivity(newActivity):
+    global startTimeActivity, activity
     currentTime = datetime.datetime.now()
     session_times[activity]["ended"].append(currentTime)
-    session_times[activity]["total"] += (currentTime.timestamp() - startTimeMode.timestamp())
+    session_times[activity]["total"] += (currentTime.timestamp() - startTimeActivity.timestamp())
     session_times[newActivity]["started"].append(currentTime)
-    startTimeMode = currentTime
+    startTimeActivity = currentTime
+    print(f"Changed activity from {activity} to {newActivity}")
     activity = newActivity
 
 
