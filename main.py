@@ -61,7 +61,7 @@ def setupGlobalVars():
     session_times = {"research": {"started": [], "ended": [], "total": 0},
                      "coding": {"started": [], "ended": [], "total": 0},
                      "break": {"started": [], "ended": [], "total": 0}}
-    command_list = ["help", "apd", "apw", "apm", "total", "cs", "cad", "ca", "change", "stop"]
+    command_list = ["help", "apd", "apw", "apm", "total", "cs", "cad", "ca", "change", "stop", "exit"]
 
 
 def main():
@@ -76,7 +76,7 @@ def main():
         if command.lower() == "apm":
             print("average per month is:", averagePerMonth())
         if command.lower() == "total":
-            print("total duration:", total())
+            print(f"total duration: {total()} hours")
         if command.lower() == "cs":
             print("current session length:", datetime.datetime.now() - startTime)
         if command.lower() == "cad":
@@ -90,6 +90,8 @@ def main():
         if command.lower() == "stop":
             print("stopping:")
             endTimer()
+        if command.lower() == "exit":
+            raise SystemExit
 
 
 def startTimer():
@@ -154,7 +156,6 @@ def endTimer():
 @lru_cache
 def averagePerDay():
     # not done yet
-    print("running code")
     average_per_day = "average_per_day"
     return average_per_day
 
@@ -162,7 +163,6 @@ def averagePerDay():
 @lru_cache
 def averagePerWeek():
     # not done yet
-    print("running code")
     average_per_week = "average_per_week"
     return average_per_week
 
@@ -170,16 +170,17 @@ def averagePerWeek():
 @lru_cache
 def averagePerMonth():
     # not done yet
-    print("running code")
     average_per_month = "average_per_month"
     return average_per_month
 
 
 @lru_cache
 def total():
-    # not done yet
-    print("running code")
-    total = "total"
+    connection = sqlite3.connect('productivity.db')
+    cursor = connection.cursor()
+    total = cursor.execute("SELECT SUM(duration_hours) FROM Sessions")
+    total = total.fetchone()[0]
+    connection.close()
     return total
 
 
