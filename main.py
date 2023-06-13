@@ -8,10 +8,15 @@ from time import sleep
 from functools import lru_cache
 # to separate the while True
 from threading import Thread
-# https://stackoverflow.com/questions/51464455/how-to-disable-welcome-message-when-importing-pygame
-import os
 
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+import os
+# calculations
+import pandas as pd
+# plotting
+import matplotlib.pyplot as plt
+
+os.environ[
+    'PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"  # https://stackoverflow.com/questions/51464455/how-to-disable-welcome-message-when-importing-pygame
 import pygame
 
 
@@ -68,6 +73,15 @@ def setupGlobalVars():
     command_list = ["help", "apd", "apw", "apm", "total", "cs", "cad", "ca", "change", "stop", "exit"]
 
 
+@lru_cache
+def getDataFrame(table_name):
+    connection = sqlite3.connect("productivity.db")
+    query = f"SELECT * FROM {table_name}"  # Use your table name and required SQL command
+    df = pd.read_sql_query(query, connection)
+    connection.close()
+    return df
+
+
 def main():
     while True:
         command = input("Listening for commands: ")
@@ -81,6 +95,8 @@ def main():
             print("average per month is:", averagePerMonth())
         elif command.lower() == "total":
             print(f"total duration: {total()} hours")
+        elif command.lower() == "piplot":
+            piPlot()
         elif command.lower() == "cs":
             print("current session length:", datetime.datetime.now() - startTime)
         elif command.lower() == "cad":
@@ -102,6 +118,8 @@ def main():
                 print("Exiting without saving")
                 raise SystemExit
             print("Continuing")
+
+
 def startTimer():
     print("Starting Timer...")
     global startTime, activity, startTimeActivity
@@ -124,7 +142,7 @@ def endTimer():
     session_times[activity]["total"] += (currentTime.timestamp() - startTimeActivity.timestamp())
     print("\nconnecting to db")
     # connect to the SQLite database
-    connection = sqlite3.connect('productivity.db')
+    connection = sqlite3.connect("productivity.db")
     cursor = connection.cursor()
 
     # calculate session duration in hours
@@ -188,11 +206,27 @@ def averagePerMonth():
 
 @lru_cache
 def total():
-    connection = sqlite3.connect('productivity.db')
-    cursor = connection.cursor()
-    total = cursor.execute("SELECT SUM(duration_hours) FROM Sessions").fetchone()[0]
-    connection.close()
-    return total
+    Sessions_DB = getDataFrame("Sessions")
+    return Sessions_DB.duration_hours.sum()
+
+
+def piPlot():
+    Session_Information_DF = getDataFrame("Session_Information")
+    # Group by activity type and sum durations
+    Session_Information_DF_Grouped = Session_Information_DF.groupby("activity_type")["activity_duration"].sum()
+    # Sum of all activities, cannot use total()
+    Session_Information_Sum = Session_Information_DF['activity_duration'].sum()
+    # if any activity is equal to the sum
+    if any(Session_Information_DF_Grouped == Session_Information_Sum):
+        dominant_activity = \
+            Session_Information_DF_Grouped[Session_Information_DF_Grouped == Session_Information_Sum].index[0]
+        print(f"{dominant_activity} has 100% duration")
+    else:
+        plt.figure(figsize=(10, 6))
+        plt.pie(Session_Information_DF_Grouped, labels=Session_Information_DF_Grouped.index, autopct='%1.1f%%')
+        plt.title("Activity durations")
+        plt.show()
+        print("Must close plot for program to continue")
 
 
 def play_reminder():
@@ -203,7 +237,7 @@ def play_reminder():
     pygame.mixer.music.load(
         "BellSound.mp3")  # copyright free https://www.youtube.com/watch?v=YEf7_fPMbr4&pp=ygUZYmVsbCBzb3VuZCBjb3B5cmlnaHQgZnJlZQ%3D%3D
     pygame.mixer.music.play()
-    while pygame.mixer.music.get_busy() == True:
+    while pygame.mixer.music.get_busy():
         continue
 
 

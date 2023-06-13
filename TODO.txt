@@ -1,0 +1,14 @@
+- finish math (averages), what else could i do?
+
+- more plots
+
+- customize activities
+
+- switch to analyse activity
+
+- reminder for stop break
+
+- change reminder times
+
+- reminder times for individual activities
+
