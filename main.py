@@ -66,11 +66,30 @@ def setupPyGameSound():
 
 
 def setupGlobalVars():
-    global session_times, command_list
+    global session_times, commands
     session_times = {"research": {"started": [], "ended": [], "total": 0},
                      "coding": {"started": [], "ended": [], "total": 0},
                      "break": {"started": [], "ended": [], "total": 0}}
-    command_list = ["help", "apd", "apw", "apm", "total", "cs", "cad", "ca", "change", "stop", "exit"]
+    commands = {
+        "help": lambda: help_command(),
+        "test": lambda: test_command(),
+        "mins": lambda: print(minSession()),
+        "mina": lambda: print(minActivity()),
+        "maxs": lambda: print(maxSession()),
+        "maxa": lambda: print(maxActivity()),
+        "apd": lambda: print("average per day is:", averagePerDay()),
+        "apw": lambda: print("average per week is:", averagePerWeek()),
+        "apm": lambda: print("average per month is:", averagePerMonth()),
+        "total": lambda: print(f"total duration: {total()} hours"),
+        "piplot": piPlot,
+        "cs": lambda: print("current session length:", datetime.datetime.now() - startTime),
+        "cad": lambda: print("current activity length:", datetime.datetime.now() - startTimeActivity),
+        "ca": lambda: print("current activity is:", activity),
+        "change": change_activity_command,
+        # Assuming you will define this function to include the required functionality
+        "stop": lambda: print("stopping:", endTimer()),
+        "exit": exit_command  # Assuming you will define this function to include the required functionality
+    }
 
 
 # @lru_cache
@@ -82,52 +101,41 @@ def getDataFrame(table_name):
     return df
 
 
+def help_command():
+    print(f"Commands are: {' '.join(commands.keys())}")
+
+
+def test_command():
+    print(getDataFrame("Sessions"))
+
+
+def stop_command():
+    print("Stopping:")
+    endTimer()
+
+
+def exit_command():
+    check = input("This will exit without saving\nAre you sure you wish to proceed? ")
+    if check.lower() == "yes":
+        print("Exiting without saving")
+        raise SystemExit
+    print("Continuing")
+
+
+def change_activity_command():
+    newActivity = input("Change: What are you doing? research/coding/break: ").lower()
+    while newActivity not in session_times.keys():
+        newActivity = input("Change: What are you doing? research/coding/break: ").lower()
+    changeActivity(newActivity)
+
+
 def main():
     while True:
-        command = input("Listening for commands: ")
-        if command.lower() == "help":
-            print(f"Commands are: {' '.join(command_list)}")
-        elif command.lower() == "test":
-            print(getDataFrame("Sessions"))
-        elif command.lower() == "mins":
-            print(minSession())
-        elif command.lower() == "mina":
-            print(minActivitiy())
-        elif command.lower() == "maxs":
-            print(maxSession())
-        elif command.lower() == "maxa":
-            print(maxActivity())
-        elif command.lower() == "apd":
-            print("average per day is:", averagePerDay())
-        elif command.lower() == "apw":
-            print("average per week is:", averagePerWeek())
-        elif command.lower() == "apm":
-            print("average per month is:", averagePerMonth())
-        elif command.lower() == "total":
-            print(f"total duration: {total()} hours")
-        elif command.lower() == "piplot":
-            piPlot()
-        elif command.lower() == "cs":
-            print("current session length:", datetime.datetime.now() - startTime)
-        elif command.lower() == "cad":
-            print("current activity length:", datetime.datetime.now() - startTimeActivity)
-        elif command.lower() == "ca":
-            print("current activity is:", activity)
-        elif command.lower() == "change":
-            # out of function so sound can auto change it
-            newActivity = input("Change: What are you doing? research/coding: ").lower()
-            while newActivity not in session_times.keys():
-                newActivity = input("Change: What are you doing? research/coding: ").lower()
-            changeActivity(newActivity)
-        elif command.lower() == "stop":
-            print("stopping:")
-            endTimer()
-        elif command.lower() == "exit":
-            check = input("This will exit without saving\nAre you sure you wish to proceed? ")
-            if check.lower() == "yes":
-                print("Exiting without saving")
-                raise SystemExit
-            print("Continuing")
+        command = input("Listening for commands: ").lower()
+        if command in commands:
+            commands[command]()
+        else:
+            print("Unknown command. Type 'help' to see a list of available commands.")
 
 
 def startTimer():
@@ -181,7 +189,7 @@ def endTimer():
     connection.commit()
     connection.close()
     print("done...\n")
-    raise SystemExit
+    # raise SystemExit
 
 
 # to help make the db i wrote it down like this, ignore this if u want.
@@ -198,28 +206,29 @@ def minSession():
     return f"Minimum session duration: {Sessions_DF.duration_hours.min()} hours\nSession date: {Sessions_DF.date[Sessions_DF.duration_hours.idxmin()]}"
 
 
-def minActivitiy():
-    # returns the minimum duration for each activity
-    Session_Information_DF = getDataFrame("Session_Information")
+def minActivity():
+    # returns the minimum duration for each activity and date
+    Merged_DF = pd.merge(getDataFrame("Session_Information"), getDataFrame("Sessions"), on='session_id', how='inner')
     string = ""
     for activity in session_times.keys():
-        # if you can simplify the date-getting then email me
-        string += f"{activity}: {Session_Information_DF.loc[Session_Information_DF.activity_type == activity, 'activity_duration'].min()} {getDataFrame('Sessions').date[Session_Information_DF.session_id[Session_Information_DF.loc[Session_Information_DF.activity_type == activity, 'activity_duration'].idxmin()]]} hours\n"
+        min_activity_id = Merged_DF.loc[Merged_DF.activity_type == activity, 'activity_duration'].idxmin()
+        string += f"{activity}: {Merged_DF.loc[min_activity_id, 'activity_duration']} hours   Date:{Merged_DF.loc[min_activity_id, 'date']}\n"
     return string[0:-1]
 
 
 def maxSession():
+    # returns maximum duration of sessions with the date
     Sessions_DF = getDataFrame("Sessions")
     return f"Minimum session duration: {Sessions_DF.duration_hours.max()} hours\nSession date: {Sessions_DF.date[Sessions_DF.duration_hours.idxmax()]}"
 
 
 def maxActivity():
-    # returns the maximum duration for each activity
-    Session_Information_DF = getDataFrame("Session_Information")
+    # returns the minimum duration for each activity and date
+    Merged_DF = pd.merge(getDataFrame("Session_Information"), getDataFrame("Sessions"), on='session_id', how='inner')
     string = ""
     for activity in session_times.keys():
-        # if you can simplify the date-getting then email me
-        string += f"{activity}: {Session_Information_DF.loc[Session_Information_DF.activity_type == activity, 'activity_duration'].max()} {getDataFrame('Sessions').date[Session_Information_DF.session_id[Session_Information_DF.loc[Session_Information_DF.activity_type == activity, 'activity_duration'].idxmax()]]} hours\n"
+        max_activity_id = Merged_DF.loc[Merged_DF.activity_type == activity, 'activity_duration'].idxmax()
+        string += f"{activity}: {Merged_DF.loc[max_activity_id, 'activity_duration']} hours   Date:{Merged_DF.loc[max_activity_id, 'date']}\n"
     return string[0:-1]
 
 
