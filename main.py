@@ -86,15 +86,15 @@ def setupGlobalVars():
         "cad": lambda: print("current activity length:", datetime.datetime.now() - startTimeActivity),
         "ca": lambda: print("current activity is:", activity),
         "change": change_activity_command,
-        "stop": lambda: print("stopping:", endTimer()),
-        "exit": exit_command 
+        "stop": lambda: print("stopping and setting up:", endTimer()),
+        "exit": exit_command
     }
 
 
 # @lru_cache
 def getDataFrame(table_name):
     connection = sqlite3.connect("productivity.db")
-    query = f"SELECT * FROM {table_name}"  
+    query = f"SELECT * FROM {table_name}"
     df = pd.read_sql_query(query, connection)
     connection.close()
     return df
@@ -130,16 +130,22 @@ def change_activity_command():
 
 def main():
     while True:
-        command = input("Listening for commands: ").lower()
+        command = input("Listening for commands: ").lower().strip()
         if command in commands:
-            commands[command]()
+            try:
+                commands[command]()
+            except:
+                print("Need data in the db!")
         else:
             print("Unknown command. Type 'help' to see a list of available commands.")
 
 
 def startTimer():
-    print("Starting Timer...")
     global startTime, activity, startTimeActivity
+    startTime = None
+    activity = None
+    startTimeActivity = None
+    print("Starting Timer...")
     activity = input("Setup: What are you doing? research/coding: ").lower()
     while activity not in session_times.keys():
         activity = input("Setup: What are you doing? research/coding: ").lower()
@@ -184,11 +190,13 @@ def endTimer():
                 INSERT INTO Time_Calender (session_id, activity_type, start_time, end_time)
                 VALUES (?, ?, ?, ?)
                 """, (session_id, activity_type, str(start_time), str(end_time)))
-    print("committing and closing")
+    print("committing and closing\n")
     connection.commit()
     connection.close()
-    print("done...\n")
     # raise SystemExit
+    setupGlobalVars()
+    startTimer()
+    return "Done\n"
 
 
 # to help make the db i wrote it down like this, ignore this if u want.
@@ -307,7 +315,6 @@ if __name__ == "__main__":
     setupSQL()
     setupPyGameSound()
     # global scope setup
-    session = {}
     setupGlobalVars()
 
     # starts program
