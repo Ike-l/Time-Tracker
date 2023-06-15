@@ -86,16 +86,15 @@ def setupGlobalVars():
         "cad": lambda: print("current activity length:", datetime.datetime.now() - startTimeActivity),
         "ca": lambda: print("current activity is:", activity),
         "change": change_activity_command,
-        # Assuming you will define this function to include the required functionality
         "stop": lambda: print("stopping:", endTimer()),
-        "exit": exit_command  # Assuming you will define this function to include the required functionality
+        "exit": exit_command 
     }
 
 
 # @lru_cache
 def getDataFrame(table_name):
     connection = sqlite3.connect("productivity.db")
-    query = f"SELECT * FROM {table_name}"  # Use your table name and required SQL command
+    query = f"SELECT * FROM {table_name}"  
     df = pd.read_sql_query(query, connection)
     connection.close()
     return df
