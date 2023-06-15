@@ -73,7 +73,7 @@ def setupGlobalVars():
     command_list = ["help", "apd", "apw", "apm", "total", "cs", "cad", "ca", "change", "stop", "exit"]
 
 
-@lru_cache
+# @lru_cache
 def getDataFrame(table_name):
     connection = sqlite3.connect("productivity.db")
     query = f"SELECT * FROM {table_name}"  # Use your table name and required SQL command
@@ -87,6 +87,16 @@ def main():
         command = input("Listening for commands: ")
         if command.lower() == "help":
             print(f"Commands are: {' '.join(command_list)}")
+        elif command.lower() == "test":
+            print(getDataFrame("Sessions"))
+        elif command.lower() == "mins":
+            print(minSession())
+        elif command.lower() == "mina":
+            print(minActivitiy())
+        elif command.lower() == "maxs":
+            print(maxSession())
+        elif command.lower() == "maxa":
+            print(maxActivity())
         elif command.lower() == "apd":
             print("average per day is:", averagePerDay())
         elif command.lower() == "apw":
@@ -182,32 +192,58 @@ def endTimer():
 # table for sessions: ID, date, duration
 # table for timespent: ID, sessions.ID coding total time, research total time, break total time.
 # table for time information: ID, timespent.ID, start times, end times
+def minSession():
+    # returns minimum duration of sessions with the date
+    Sessions_DF = getDataFrame("Sessions")
+    return f"Minimum session duration: {Sessions_DF.duration_hours.min()} hours\nSession date: {Sessions_DF.date[Sessions_DF.duration_hours.idxmin()]}"
 
-@lru_cache
+
+def minActivitiy():
+    # returns the minimum duration for each activity
+    Session_Information_DF = getDataFrame("Session_Information")
+    string = ""
+    for activity in session_times.keys():
+        # if you can simplify the date-getting then email me
+        string += f"{activity}: {Session_Information_DF.loc[Session_Information_DF.activity_type == activity, 'activity_duration'].min()} {getDataFrame('Sessions').date[Session_Information_DF.session_id[Session_Information_DF.loc[Session_Information_DF.activity_type == activity, 'activity_duration'].idxmin()]]} hours\n"
+    return string[0:-1]
+
+
+def maxSession():
+    Sessions_DF = getDataFrame("Sessions")
+    return f"Minimum session duration: {Sessions_DF.duration_hours.max()} hours\nSession date: {Sessions_DF.date[Sessions_DF.duration_hours.idxmax()]}"
+
+
+def maxActivity():
+    # returns the maximum duration for each activity
+    Session_Information_DF = getDataFrame("Session_Information")
+    string = ""
+    for activity in session_times.keys():
+        # if you can simplify the date-getting then email me
+        string += f"{activity}: {Session_Information_DF.loc[Session_Information_DF.activity_type == activity, 'activity_duration'].max()} {getDataFrame('Sessions').date[Session_Information_DF.session_id[Session_Information_DF.loc[Session_Information_DF.activity_type == activity, 'activity_duration'].idxmax()]]} hours\n"
+    return string[0:-1]
+
+
 def averagePerDay():
     # not done yet
     average_per_day = "average_per_day"
     return average_per_day
 
 
-@lru_cache
 def averagePerWeek():
     # not done yet
     average_per_week = "average_per_week"
     return average_per_week
 
 
-@lru_cache
 def averagePerMonth():
     # not done yet
     average_per_month = "average_per_month"
     return average_per_month
 
 
-@lru_cache
 def total():
-    Sessions_DB = getDataFrame("Sessions")
-    return Sessions_DB.duration_hours.sum()
+    Sessions_DF = getDataFrame("Sessions")
+    return Sessions_DF.duration_hours.sum()
 
 
 def piPlot():

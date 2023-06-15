@@ -1,8 +1,8 @@
-- finish math (averages), what else could i do?
+- finish math (averages), what else could i do? min,max activity session
 
 - more plots
 
-- customize activities
+- customize/add activities
 
 - switch to analyse activity
 
@@ -12,3 +12,8 @@
 
 - reminder times for individual activities
 
+- settings
+
+- calender
+
+- gui
